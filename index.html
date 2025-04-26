@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>東京3D都市ARビューア</title>
+  <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
+  <style>
+    :root {
+      --primary-color: #007bff;
+      --ar-button-size: 48px;
+    }
+    body {
+      margin: 0;
+      background: #f8f9fa;
+    }
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    model-viewer {
+      width: 100%;
+      height: 70vh;
+      background: #e9ecef;
+      border-radius: 12px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    .ar-button {
+      position: fixed;
+      bottom: 30px;
+      right: 30px;
+      width: var(--ar-button-size);
+      height: var(--ar-button-size);
+      background: var(--primary-color);
+      border-radius: 50%;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(0,123,255,0.3);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>東京都デジタルツインAR</h1>
+    <p>下のARボタンを押すと、現実空間に3Dモデルが出現します</p>
+    
+    <model-viewer
+      id="main-model"
+      src="tokyo_optimized.glb"
+      ios-src="tokyo_lod2.usdz"
+      ar
+      ar-modes="webxr scene-viewer quick-look"
+      camera-controls
+      auto-rotate
+      shadow-intensity="1.2"
+      exposure="1.0"
+      environment-image="neutral"
+      alt="東京都3D都市モデル（LOD2）"
+      ar-scale="fixed"
+      ar-placement="floor">
+      
+      <div class="ar-button" slot="ar-button"></div>
+    </model-viewer>
+  </div>
+
+  <script>
+    // パフォーマンス監視
+    const modelViewer = document.querySelector('model-viewer');
+    modelViewer.addEventListener('load', () => {
+      console.log('モデル読み込み完了:', performance.now());
+    });
+  </script>
+</body>
+</html>

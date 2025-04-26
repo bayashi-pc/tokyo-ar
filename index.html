@@ -3,19 +3,21 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>東京AR都市ビューア</title>
+  <title>東京都庁ARビューア</title>
   <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
   <script nomodule src="https://unpkg.com/@google/model-viewer/dist/model-viewer-legacy.js"></script>
   <style>
     :root {
       --ar-button-color: #007bff;
-      --ar-button-size: 56px;
+      --ar-button-size: 60px;
+      --model-opacity: 1;
     }
 
     body {
       margin: 0;
-      background: #f0f0f0;
+      background: #f8f9fa;
       font-family: 'Helvetica Neue', Arial, sans-serif;
+      overflow-x: hidden;
     }
 
     .container {
@@ -27,9 +29,10 @@
     model-viewer {
       width: 100%;
       height: 80vh;
-      background: #e8e8e8;
+      background: #ffffff;
       border-radius: 16px;
       box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+      opacity: var(--model-opacity);
     }
 
     .ar-button-custom {
@@ -45,21 +48,31 @@
       display: flex;
       align-items: center;
       justify-content: center;
+      z-index: 1000;
     }
 
     .ar-button-custom img {
       width: 60%;
       height: 60%;
+      filter: invert(1);
+    }
+
+    /* iOS 18 不具合対策 */
+    @supports (font: -apple-system-body) and (-webkit-touch-callout: none) {
+      model-viewer {
+        --model-opacity: 0.99; /* 透過バグ回避 */
+        ar-scale: 0.8;
+      }
     }
   </style>
 </head>
 <body>
   <div class="container">
-    <h1>東京都AR</h1>
+    <h1>東京都庁AR</h1>
     <p>ARボタンを押してスマホを動かすと、目の前に都庁の3Dモデルが出現します</p>
 
     <model-viewer
-      id="tokyo-model"
+      id="metro-gov-model"
       src="citymodel.glb"
       ios-src="citymodel.usdz"
       ar
@@ -68,50 +81,67 @@
       ar-scale="fixed"
       camera-controls
       auto-rotate
-      shadow-intensity="1.2"
-      exposure="1.0"
-      environment-image="neutral"
+      shadow-intensity="0.5"
+      environment-intensity="1.8"
+      exposure="0.85"
       interaction-prompt="none"
-      camera-orbit="0deg 75deg 5m"
-      field-of-view="30deg"
+      camera-orbit="0deg 75deg 15m"
+      field-of-view="40deg"
       camera-target="0m 0m 0m"
-      alt="都庁3Dモデル"
-      xr-environment>
+      xr-environment
+      environment-image="neutral"
+      reveal="auto"
+      loading="eager"
+      bounds="tight">
 
       <div class="ar-button-custom" slot="ar-button">
-        <img src="ar-icon.svg" alt="AR起動">
+        <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0Ij48cGF0aCBkPSJNMTkgMTBIMjBWMjBIMTRWMThIMTdWMTNIN1YxOEgxMFYyMEg0VjEwSDVWOC4zMDdDMi41OTEgOC44MzQgMS4wODcgMTAuMjYyIDEgMTIuNUgxQzEgOS40NjMgMy40NjMgNyA2LjVDNy40MjMgNyA4LjI5MiA3LjM5IDkgOGMwLjcwOC0wLjYxIDEuNjU0LTEgMi41LTEgMi40ODMgMCA0LjUgMi4yMDEgNC41IDQuOTkzVjE5SDExVjE3LjAwM0gxM1YxOUgxMVYyMUgyM1YxMUgxOVYxMHpNNSAxMkM1IDEwLjg5NiA1Ljg5NiAxMCA3IDEwUzkgMTAuODk2IDkgMTIgOSAxMy4xMDQgNyAxMy4xMDRTNSAxMy4xMDQgNSAxMnoiLz48L3N2Zz4=" alt="ARアイコン">
       </div>
     </model-viewer>
   </div>
 
   <script>
-    const modelViewer = document.querySelector('#tokyo-model');
+    const modelViewer = document.querySelector('#metro-gov-model');
+    let isModelVisible = true;
 
-    // モデル読み込み後の初期化
+    // モデル初期化
     modelViewer.addEventListener('load', () => {
-      // スケール調整（現実世界の1mを1cmに）
-      modelViewer.modelScale = "0.01";
-      
-      // iOS用追加設定
-      if (/iPhone|iPad|iPod/.test(navigator.userAgent)) {
-        modelViewer.arPlacement = "floor";
-        modelViewer.arScale = "fixed";
-        modelViewer.setAttribute('interaction-prompt', 'none');
+      // スケール設定（PLATEAUデータ用）
+      modelViewer.modelScale = "0.005"; // 実物の1/200サイズ
+      modelViewer.cameraTarget = '0m 0m 0m';
+
+      // iOS 18対策
+      if (/iPhone OS 18/.test(navigator.userAgent)) {
+        modelViewer.shadowIntensity = 0.3;
+        modelViewer.environmentIntensity = 2.2;
+        modelViewer.style.setProperty('--model-opacity', '0.999');
       }
 
-      // Android用追加設定
+      // Android用最適化
       if (/Android/.test(navigator.userAgent)) {
         modelViewer.arPlacement = "wall";
-        modelViewer.setAttribute('camera-orbit', '0deg 75deg 2m');
+        modelViewer.setAttribute('camera-orbit', '0deg 75deg 10m');
+        modelViewer.shadowIntensity = 0.7;
       }
-    });
 
-    // 視点リセット機能
-    document.addEventListener('keypress', (e) => {
-      if (e.code === 'KeyR') {
-        modelViewer.cameraOrbit = '0deg 75deg 5m';
-        modelViewer.cameraTarget = '0m 0m 0m';
-      }
+      // 透明度監視
+      const observer = new MutationObserver(mutations => {
+        mutations.forEach(mutation => {
+          if (mutation.attributeName === 'style') {
+            const currentOpacity = parseFloat(modelViewer.style.opacity);
+            if (currentOpacity < 0.95 && isModelVisible) {
+              console.warn('モデル透明度異常検出:', currentOpacity);
+              modelViewer.style.opacity = '1';
+              modelViewer.style.mixBlendMode = 'normal';
+            }
+          }
+        });
+      });
+
+      observer.observe(modelViewer, {
+        attributes: true,
+        attributeFilter: ['style']
+      });
     });
 
     // パフォーマンス監視
@@ -119,20 +149,23 @@
     modelViewer.addEventListener('ar-tracking', () => {
       const now = performance.now();
       const delta = now - lastFrameTime;
-      lastFrameTime = now;
       
-      if (delta > 33) { // 30fps以下になったら警告
-        console.warn(`低フレームレート検出: ${Math.floor(1000/delta)}fps`);
+      if (delta > 33) { // 30fpsを下回った場合
+        console.log(`パフォーマンス警告: ${Math.floor(1000/delta)}fps`);
+        modelViewer.loading = "lazy";
+      }
+      
+      lastFrameTime = now;
+    });
+
+    // 手動リセット機能
+    window.addEventListener('deviceorientation', () => {
+      if (!isModelVisible) {
+        modelViewer.cameraOrbit = '0deg 75deg 15m';
+        modelViewer.cameraTarget = '0m 0m 0m';
+        isModelVisible = true;
       }
     });
   </script>
-
-  <!-- クレジット表示 -->
-  <footer style="text-align: center; padding: 20px; color: #666;">
-    <small>
-      出典：国土交通省「Project PLATEAU」 
-      (<a href="https://www.mlit.go.jp/plateau/" target="_blank">https://www.mlit.go.jp/plateau/</a>)
-    </small>
-  </footer>
 </body>
 </html>

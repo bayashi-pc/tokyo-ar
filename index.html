@@ -3,72 +3,136 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>東京3D都市ARビューア</title>
+  <title>東京AR都市ビューア</title>
   <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
+  <script nomodule src="https://unpkg.com/@google/model-viewer/dist/model-viewer-legacy.js"></script>
   <style>
     :root {
-      --primary-color: #007bff;
-      --ar-button-size: 48px;
+      --ar-button-color: #007bff;
+      --ar-button-size: 56px;
     }
+
     body {
       margin: 0;
-      background: #f8f9fa;
+      background: #f0f0f0;
+      font-family: 'Helvetica Neue', Arial, sans-serif;
     }
+
     .container {
       max-width: 1200px;
       margin: 0 auto;
       padding: 20px;
     }
+
     model-viewer {
       width: 100%;
-      height: 70vh;
-      background: #e9ecef;
-      border-radius: 12px;
-      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      height: 80vh;
+      background: #e8e8e8;
+      border-radius: 16px;
+      box-shadow: 0 8px 16px rgba(0,0,0,0.1);
     }
-    .ar-button {
+
+    .ar-button-custom {
       position: fixed;
       bottom: 30px;
       right: 30px;
       width: var(--ar-button-size);
       height: var(--ar-button-size);
-      background: var(--primary-color);
+      background: var(--ar-button-color);
       border-radius: 50%;
       cursor: pointer;
       box-shadow: 0 4px 12px rgba(0,123,255,0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .ar-button-custom img {
+      width: 60%;
+      height: 60%;
     }
   </style>
 </head>
 <body>
   <div class="container">
-    <h1>東京都市AR</h1>
-    <p>下の青いARボタンを押すと、現実空間に3Dモデルが出現します（PC以外）</p>
-    
+    <h1>東京都AR</h1>
+    <p>ARボタンを押してスマホを動かすと、目の前に都庁の3Dモデルが出現します</p>
+
     <model-viewer
-      id="main-model"
+      id="tokyo-model"
       src="citymodel.glb"
       ios-src="citymodel.usdz"
       ar
       ar-modes="webxr scene-viewer quick-look"
+      ar-placement="floor"
+      ar-scale="fixed"
       camera-controls
       auto-rotate
       shadow-intensity="1.2"
       exposure="1.0"
       environment-image="neutral"
-      alt="東京3Dモデル（LOD2）"
-      ar-scale="fixed"
-      ar-placement="floor">
-      
-      <div class="ar-button" slot="ar-button"></div>
+      interaction-prompt="none"
+      camera-orbit="0deg 75deg 5m"
+      field-of-view="30deg"
+      camera-target="0m 0m 0m"
+      alt="都庁3Dモデル"
+      xr-environment>
+
+      <div class="ar-button-custom" slot="ar-button">
+        <img src="ar-icon.svg" alt="AR起動">
+      </div>
     </model-viewer>
   </div>
 
   <script>
-    // パフォーマンス監視
-    const modelViewer = document.querySelector('model-viewer');
+    const modelViewer = document.querySelector('#tokyo-model');
+
+    // モデル読み込み後の初期化
     modelViewer.addEventListener('load', () => {
-      console.log('モデル読み込み完了:', performance.now());
+      // スケール調整（現実世界の1mを1cmに）
+      modelViewer.modelScale = "0.01";
+      
+      // iOS用追加設定
+      if (/iPhone|iPad|iPod/.test(navigator.userAgent)) {
+        modelViewer.arPlacement = "floor";
+        modelViewer.arScale = "fixed";
+        modelViewer.setAttribute('interaction-prompt', 'none');
+      }
+
+      // Android用追加設定
+      if (/Android/.test(navigator.userAgent)) {
+        modelViewer.arPlacement = "wall";
+        modelViewer.setAttribute('camera-orbit', '0deg 75deg 2m');
+      }
+    });
+
+    // 視点リセット機能
+    document.addEventListener('keypress', (e) => {
+      if (e.code === 'KeyR') {
+        modelViewer.cameraOrbit = '0deg 75deg 5m';
+        modelViewer.cameraTarget = '0m 0m 0m';
+      }
+    });
+
+    // パフォーマンス監視
+    let lastFrameTime = performance.now();
+    modelViewer.addEventListener('ar-tracking', () => {
+      const now = performance.now();
+      const delta = now - lastFrameTime;
+      lastFrameTime = now;
+      
+      if (delta > 33) { // 30fps以下になったら警告
+        console.warn(`低フレームレート検出: ${Math.floor(1000/delta)}fps`);
+      }
     });
   </script>
+
+  <!-- クレジット表示 -->
+  <footer style="text-align: center; padding: 20px; color: #666;">
+    <small>
+      出典：国土交通省「Project PLATEAU」 
+      (<a href="https://www.mlit.go.jp/plateau/" target="_blank">https://www.mlit.go.jp/plateau/</a>)
+    </small>
+  </footer>
 </body>
 </html>

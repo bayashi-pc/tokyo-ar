@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>東京都庁ARビューア</title>
+  <title>東京都庁ARビューア（透過防止版）</title>
   <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
   <script nomodule src="https://unpkg.com/@google/model-viewer/dist/model-viewer-legacy.js"></script>
   <style>
@@ -33,6 +33,12 @@
       border-radius: 16px;
       box-shadow: 0 8px 16px rgba(0,0,0,0.1);
       opacity: var(--model-opacity);
+      mix-blend-mode: multiply; /* 背景合成モード変更 */
+      isolation: isolate; /* レンダリングコンテキスト分離 */
+    }
+
+    model-viewer::part(container) {
+      z-index: 1000; /* 深度レイヤー調整 */
     }
 
     .ar-button-custom {
@@ -48,7 +54,7 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      z-index: 1000;
+      z-index: 1001; /* ボタンの深度調整 */
     }
 
     .ar-button-custom img {
@@ -57,10 +63,9 @@
       filter: invert(1);
     }
 
-    /* iOS 18 不具合対策 */
     @supports (font: -apple-system-body) and (-webkit-touch-callout: none) {
       model-viewer {
-        --model-opacity: 0.99; /* 透過バグ回避 */
+        --model-opacity: 0.999; /* iOS透過バグ回避 */
         ar-scale: 0.8;
       }
     }
@@ -81,9 +86,9 @@
       ar-scale="auto"
       camera-controls
       auto-rotate
-      shadow-intensity="0.5"
-      environment-intensity="1.8"
-      exposure="0.85"
+      shadow-intensity="1.2" <!-- 奥行き強調のため影を強化 -->
+      environment-intensity="2.0" <!-- 環境光を明るく設定 -->
+      exposure="0.8"
       interaction-prompt="none"
       camera-orbit="0deg 75deg 15m"
       field-of-view="40deg"
@@ -92,10 +97,12 @@
       environment-image="neutral"
       reveal="auto"
       loading="eager"
-      bounds="tight">
+      bounds="tight"
+      depth-test="less-equal" <!-- 深度テスト設定 -->
+      depth-bias="0.001"> <!-- Z-fighting防止 -->
 
       <div class="ar-button-custom" slot="ar-button">
-        <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0Ij48cGF0aCBkPSJNMTkgMTBIMjBWMjBIMTRWMThIMTdWMTNIN1YxOEgxMFYyMEg0VjEwSDVWOC4zMDdDMi41OTEgOC44MzQgMS4wODcgMTAuMjYyIDEgMTIuNUgxQzEgOS40NjMgMy40NjMgNyA2LjVDNy40MjMgNyA4LjI5MiA3LjM5IDkgOGMwLjcwOC0wLjYxIDEuNjU0LTEgMi41LTEgMi40ODMgMCA0LjUgMi4yMDEgNC41IDQuOTkzVjE5SDExVjE3LjAwM0gxM1YxOUgxMVYyMUgyM1YxMUgxOVYxMHpNNSAxMkM1IDEwLjg5NiA1Ljg5NiAxMCA3IDEwUzkgMTAuODk2IDkgMTIgOSAxMy4xMDQgNyAxMy4xMDRTNSAxMy4xMDQgNSAxMnoiLz48L3N2Zz4=" alt="ARアイコン">
+        <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0Ij48cGF0aCBkPSJNMTkgMTBIMjBWMjBIMTRWMThIMTdWMTNIN1YxOEgxMFYyMEg0VjEwSDVWOC4zMDdDMi41OTEgOC44MzQgMS4wODcgMTAuMjYyIDEgMTIuNUgxQzEgOS40NjMgMy40NjMgNyA2LjVDNy40MjMgNyA4LjI5yIDcuMzkgOSA4YzAuNzA4LTAuNjEgMS42NTQtMSAyLjUtMSAyLjQ4MyAwIDQuNSAyLjIwMSA0LjUgNC45OTNWMTlIMTFWMTcuMDAzSDEzVjE5SDExVjIxSDIzVjExSDE5VjEwek01IDEyQzUgMTAuODk2IDUuODk2IDEwIDcgMTBTOSAxMC44OTYgOSAxMiA5IDEzLjEwNCA3IDEzLjEwNFM1IDEzLjEwNCA1IDEyeiIvPjwvc3ZnPg==" alt="ARアイコン">
       </div>
     </model-viewer>
   </div>
@@ -104,25 +111,40 @@
     const modelViewer = document.querySelector('#metro-gov-model');
     let isModelVisible = true;
 
-    // モデル初期化
+    // モデル初期化処理
     modelViewer.addEventListener('load', () => {
-      // スケール設定（PLATEAUデータ用）
-      modelViewer.modelScale = "0.005"; // 実物の1/200サイズ
+      // スケール設定（実世界サイズ調整）
+      modelViewer.modelScale = "0.005";
       modelViewer.cameraTarget = '0m 0m 0m';
 
-      // iOS 18対策
-      if (/iPhone OS 18/.test(navigator.userAgent)) {
+      // iOS向け深度バッファ設定
+      if (/iPhone|iPad/.test(navigator.userAgent)) {
+        modelViewer.renderer = {
+          ...modelViewer.renderer,
+          depthBuffer: true,
+          depthWrite: true,
+          alpha: false
+        };
         modelViewer.shadowIntensity = 0.3;
         modelViewer.environmentIntensity = 2.2;
         modelViewer.style.setProperty('--model-opacity', '0.999');
       }
 
-      // Android用最適化
+      // Android向け設定
       if (/Android/.test(navigator.userAgent)) {
         modelViewer.arPlacement = "wall";
         modelViewer.setAttribute('camera-orbit', '0deg 75deg 10m');
         modelViewer.shadowIntensity = 0.7;
       }
+
+      // マテリアルプロパティ上書き（透過防止）
+      modelViewer.model.materials.forEach(material => {
+        material.transparent = false;
+        material.alphaTest = 0.5;
+        material.depthWrite = true;
+        material.depthTest = true;
+        material.needsUpdate = true;
+      });
 
       // 透明度監視
       const observer = new MutationObserver(mutations => {
@@ -130,7 +152,7 @@
           if (mutation.attributeName === 'style') {
             const currentOpacity = parseFloat(modelViewer.style.opacity);
             if (currentOpacity < 0.95 && isModelVisible) {
-              console.warn('モデル透明度異常検出:', currentOpacity);
+              console.warn('透明度異常を検出しリセット');
               modelViewer.style.opacity = '1';
               modelViewer.style.mixBlendMode = 'normal';
             }
@@ -150,15 +172,15 @@
       const now = performance.now();
       const delta = now - lastFrameTime;
       
-      if (delta > 33) { // 30fpsを下回った場合
+      if (delta > 33) {
         console.log(`パフォーマンス警告: ${Math.floor(1000/delta)}fps`);
         modelViewer.loading = "lazy";
+        modelViewer.dismissPoster();
       }
-      
       lastFrameTime = now;
     });
 
-    // 手動リセット機能
+    // デバイス方向変化時のリセット
     window.addEventListener('deviceorientation', () => {
       if (!isModelVisible) {
         modelViewer.cameraOrbit = '0deg 75deg 15m';
@@ -166,6 +188,19 @@
         isModelVisible = true;
       }
     });
+
+    // ウィンドウリサイズ対応
+    window.addEventListener('resize', () => {
+      modelViewer.updateFraming();
+    });
   </script>
+
+  <!-- クレジット表示 -->
+  <footer style="text-align: center; padding: 20px; color: #666; margin-top: 40px;">
+    <small>
+      出典：東京都デジタルツインプロジェクト 
+      （<a href="https://www.metro.tokyo.lg.jp/" target="_blank">https://www.metro.tokyo.lg.jp/</a>）
+    </small>
+  </footer>
 </body>
 </html>
